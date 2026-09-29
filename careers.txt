@@ -1,0 +1,10 @@
+# One career page URL per line. Lines starting with # are ignored.
+# Server-rendered pages work best. Sites that load jobs only with JavaScript may return few results.
+https://www.zoho.com/careers/
+https://www.freshworks.com/company/careers/
+https://www.infosys.com/careers/
+https://careers.wipro.com/
+https://www.hcltech.com/careers
+https://www.techmahindra.com/careers/
+https://www.larsentoubro.com/corporate/careers/
+https://www.tatamotors.com/careers/

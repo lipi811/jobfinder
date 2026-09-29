@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import httpx
+import scraper
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -105,7 +106,10 @@ async def _lever(slug):
 async def refresh_boards():
     global _boards
     tasks = [_greenhouse(s) for s in COMPANIES["greenhouse"]] + [_lever(s) for s in COMPANIES["lever"]]
-    _boards = [j for batch in await asyncio.gather(*tasks) for j in batch]
+    api_jobs = [j for batch in await asyncio.gather(*tasks) for j in batch]
+    scraped = await scraper.crawl_all(_client, os.path.join(os.path.dirname(__file__), "careers.txt"))
+    seen = {j["url"] for j in api_jobs}
+    _boards = api_jobs + [j for j in scraped if j["url"] not in seen]
 
 
 async def _loop():
@@ -168,6 +172,14 @@ async def search(q: str = "", location: str = "", stream: str = "", level: str =
 @app.get("/api/streams")
 async def streams():
     return list(STREAMS)
+
+
+@app.post("/api/refresh")
+async def refresh():
+    """Re-run the scrapers now (e.g. right after editing careers.txt)."""
+    await refresh_boards()
+    _cache.clear()
+    return {"company_jobs": len(_boards)}
 
 
 @app.get("/healthz")
