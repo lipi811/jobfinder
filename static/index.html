@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JobFinder India</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F3F6FA;--card:#fff;--ink:#14213D;--mute:#5B6780;--line:#D9E0EA;--accent:#0B6E4F;--hi:#FFB703}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1626;--card:#16223A;--ink:#EAF0FA;--mute:#9AA9C4;--line:#26364F;--accent:#3DDC97}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:40px 16px 80px}
+h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:0 0 8px}
+h1 span{background:linear-gradient(transparent 62%,var(--hi) 62%)}
+p.sub{color:var(--mute);margin:0 0 24px;max-width:56ch}
+form{display:grid;gap:10px;grid-template-columns:1fr 1fr;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+form .wide{grid-column:1/-1}
+input,select,button{font:inherit;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+button{background:var(--accent);color:#fff;border:0;font-weight:600;cursor:pointer}
+button:disabled{opacity:.6}
+:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.seg{display:flex;gap:8px;align-items:center;color:var(--mute)}
+.seg label{display:flex;gap:6px;align-items:center;color:var(--ink)}
+#meta{color:var(--mute);margin:20px 0 8px}
+.job{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;color:inherit;text-decoration:none}
+.job:hover{border-color:var(--accent)}
+.job h3{margin:0;font-size:1.05rem}
+.job .co{color:var(--accent);font-weight:600}
+.job small{color:var(--mute)}
+.job p{margin:6px 0 0;color:var(--mute);font-size:.92rem}
+.tag{font-size:.75rem;border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-left:6px;color:var(--mute)}
+#more{width:100%;margin-top:6px}
+@media(max-width:560px){form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Find your first job, or your <span>next one</span>.</h1>
+<p class="sub">Search openings across India for every field, from engineering and commerce to healthcare and teaching. Results come from company career pages and job boards.</p>
+<form id="f">
+  <input class="wide" name="q" placeholder="Job title or skill (e.g. accountant, react, nurse)" aria-label="Job title or skill">
+  <input name="location" placeholder="City (e.g. Pune)" aria-label="City">
+  <select name="stream" id="stream" aria-label="Field"><option value="">Any field</option></select>
+  <div class="seg wide">Experience:
+    <label><input type="radio" name="level" value="fresher" checked> Fresher</label>
+    <label><input type="radio" name="level" value="any"> Any</label>
+  </div>
+  <button class="wide" id="go">Search jobs</button>
+</form>
+<div id="meta" aria-live="polite"></div>
+<div id="list"></div>
+<button id="more" hidden>Show more jobs</button>
+</main>
+<script>
+const $=s=>document.querySelector(s);let page=1;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ago=d=>{if(!d)return"";const n=Math.floor((Date.now()-new Date(d))/864e5);return isNaN(n)?"":n<1?"Today":n+"d ago"};
+fetch("/api/streams").then(r=>r.json()).then(a=>a.forEach(s=>$("#stream").add(new Option(s[0].toUpperCase()+s.slice(1),s))));
+async function run(reset){
+  if(reset){page=1;$("#list").innerHTML=""}
+  const p=new URLSearchParams(new FormData($("#f")));p.set("page",page);
+  $("#go").disabled=true;$("#meta").textContent="Searching...";
+  try{
+    const d=await (await fetch("/api/search?"+p)).json();
+    $("#list").insertAdjacentHTML("beforeend",d.jobs.map(j=>`
+      <a class="job" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">
+        <h3>${esc(j.title)}<span class="tag">${esc(j.source)}</span></h3>
+        <span class="co">${esc(j.company)}</span> <small>${esc(j.location)} ${ago(j.posted)?"- "+ago(j.posted):""}</small>
+        ${j.snippet?`<p>${esc(j.snippet)}</p>`:""}
+      </a>`).join(""));
+    const shown=$("#list").children.length;
+    $("#meta").textContent=d.total?`${d.total} jobs found`:"No jobs found. Try a broader title, another city, or set Experience to Any.";
+    $("#more").hidden=shown>=d.total;
+  }catch(e){$("#meta").textContent="Something went wrong. Check your connection and try again."}
+  $("#go").disabled=false;
+}
+$("#f").addEventListener("submit",e=>{e.preventDefault();run(true)});
+$("#more").addEventListener("click",()=>{page++;run(false)});
+run(true);
+</script>
+</body>
+</html>
